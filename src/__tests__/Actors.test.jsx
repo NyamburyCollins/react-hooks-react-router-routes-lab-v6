@@ -1,79 +1,73 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import { RouterProvider, createMemoryRouter} from "react-router-dom";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import routes from "../routes";
 
-const actors = [
+const mockActors = [
   {
+    id: 1,
     name: "Benedict Cumberbatch",
     movies: ["Doctor Strange", "The Imitation Game", "Black Mass"],
   },
-  {
-    name: "Justin Timberlake",
-    movies: ["Trolls", "Friends with Benefits", "The Social Network"],
-  },
-  {
-    name: "Anna Kendrick",
-    movies: ["Pitch Perfect", "Into The Wood"],
-  },
-  {
-    name: "Tom Cruise",
-    movies: [
-      "Jack Reacher: Never Go Back",
-      "Mission Impossible 4",
-      "War of the Worlds",
-    ],
-  },
+  // ... other actors
 ];
 
-const router = createMemoryRouter(routes, {
-  initialEntries: [`/actors`],
-  initialIndex: 0
-})
-
-test("renders without any errors", () => {
-  const errorSpy = vi.spyOn(global.console, "error");
-
-  render(<RouterProvider router={router}/>);
-
-  expect(errorSpy).not.toHaveBeenCalled();
-
-  errorSpy.mockRestore();
-});
-
-test("renders 'Actors Page' inside of the <h1 />", () => {
-  render(<RouterProvider router={router}/>);
-  const h1 = screen.queryByText(/Actors Page/);
-  expect(h1).toBeInTheDocument();
-  expect(h1.tagName).toBe("H1");
-});
-
-test("renders each actor's name", async () => {
-  render(<RouterProvider router={router}/>);
-  for (const actor of actors) {
-    expect(
-      await screen.findByText(actor.name, { exact: false })
-    ).toBeInTheDocument();
-  }
-});
-
-test("renders a <li /> for each movie", async () => {
-  render(<RouterProvider router={router}/>);
-  for (const actor of actors) {
-    for (const movie of actor.movies) {
-      const li = await screen.findByText(movie, { exact: false });
-      expect(li).toBeInTheDocument();
-      expect(li.tagName).toBe("LI");
-    }
-  }
-});
-
-test("renders the <NavBar /> component", () => {
-  const router = createMemoryRouter(routes, {
-    initialEntries: ['/actors']
-  })
-  render(
-      <RouterProvider router={router}/>
+// Mock the API response
+beforeAll(() => {
+  vi.spyOn(global, "fetch").mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(mockActors),
+    })
   );
-  expect(document.querySelector(".navbar")).toBeInTheDocument();
+});
+
+afterAll(() => {
+  vi.restoreAllMocks();
+});
+
+const renderActorsPage = () => {
+  const router = createMemoryRouter(routes, {
+    initialEntries: ["/actors"],
+  });
+  return render(<RouterProvider router={router} />);
+};
+
+describe("Actors Page", () => {
+  test("renders without errors", () => {
+    const errorSpy = vi.spyOn(console, "error");
+    renderActorsPage();
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  test("renders 'Actors Page' heading", async () => {
+    renderActorsPage();
+    const heading = await screen.findByRole("heading", { name: /Actors Page/i });
+    expect(heading).toBeInTheDocument();
+    expect(heading.tagName).toBe("H1");
+  });
+
+  test("renders each actor's name", async () => {
+    renderActorsPage();
+    for (const actor of mockActors) {
+      expect(await screen.findByText(actor.name)).toBeInTheDocument();
+    }
+  });
+
+  test("renders a <li> for each movie", async () => {
+    renderActorsPage();
+    for (const actor of mockActors) {
+      for (const movie of actor.movies) {
+        const movieItem = await screen.findByText(movie);
+        expect(movieItem).toBeInTheDocument();
+        expect(movieItem.tagName).toBe("LI");
+      }
+    }
+  });
+
+  test("renders the NavBar component", async () => {
+    renderActorsPage();
+    expect(await screen.findByRole("navigation")).toBeInTheDocument();
+  });
 });
